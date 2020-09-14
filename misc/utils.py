@@ -213,7 +213,7 @@ def dist_acc(dists, thr=0.5):
 def evaluate_pck_accuracy(output, target, hm_type='gaussian', thr=0.5):
     """
     Calculate accuracy according to PCK,
-    but uses ground truth heatmap rather than x,y locations
+    but uses ground truth heatmap rather than y,x locations
     First value to be returned is average accuracy across 'idxs',
     followed by individual accuracies
     """
@@ -240,7 +240,7 @@ def evaluate_pck_accuracy(output, target, hm_type='gaussian', thr=0.5):
             avg_acc = avg_acc + acc[i]
             cnt += 1
 
-    avg_acc = avg_acc / cnt if cnt != 0 else 0
+    avg_acc = avg_acc / cnt if cnt != 0 else torch.tensor(0)
     return acc, avg_acc, cnt, pred, target
 #
 #
@@ -340,15 +340,19 @@ def bbox_iou(bbox_a, bbox_b):
 # Bounding box/pose similarity and association
 def oks_iou(g, d, a_g, a_d, sigmas=None, in_vis_thre=None):
     if not isinstance(sigmas, np.ndarray):
-        sigmas = np.array([.26, .25, .25, .35, .35, .79, .79, .72, .72, .62, .62, 1.07, 1.07, .87, .87, .89, .89])/10.0
+        if d.shape[1] == 17:  # COCO
+            sigmas = np.array(
+                [.26, .25, .25, .35, .35, .79, .79, .72, .72, .62, .62, 1.07, 1.07, .87, .87, .89, .89]) / 10.0
+        else:  # MPII and others
+            sigmas = np.ones((d.shape[1],), dtype=np.float32) / 10.0
     vars = (sigmas * 2) ** 2
-    xg = g[:, 0]
-    yg = g[:, 1]
+    yg = g[:, 0]
+    xg = g[:, 1]
     vg = g[:, 2]
     ious = np.zeros((d.shape[0]))
     for n_d in range(0, d.shape[0]):
-        xd = d[n_d, :, 0]
-        yd = d[n_d, :, 1]
+        yd = d[n_d, :, 0]
+        xd = d[n_d, :, 1]
         vd = d[n_d, :, 2]
         dx = xd - xg
         dy = yd - yg

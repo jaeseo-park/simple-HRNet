@@ -68,7 +68,7 @@ def joints_dict():
     return joints
 
 
-def draw_points(image, points, color_palette='tab20', palette_samples=16):
+def draw_points(image, points, color_palette='tab20', palette_samples=16, confidence_threshold=0.5):
     """
     Draws `points` on `image`.
 
@@ -76,11 +76,13 @@ def draw_points(image, points, color_palette='tab20', palette_samples=16):
         image: image in opencv format
         points: list of points to be drawn.
             Shape: (nof_points, 3)
-            Format: each point should contain (x, y, confidence)
+            Format: each point should contain (y, x, confidence)
         color_palette: name of a matplotlib color palette
             Default: 'tab20'
         palette_samples: number of different colors sampled from the `color_palette`
             Default: 16
+        confidence_threshold: only points with a confidence higher than this threshold will be drawn. Range: [0, 1]
+            Default: 0.5
 
     Returns:
         A new image with overlaid points
@@ -99,13 +101,14 @@ def draw_points(image, points, color_palette='tab20', palette_samples=16):
     # circle_size = max(2, int(np.sqrt(np.max(np.max(points, axis=0) - np.min(points, axis=0)) // 16)))
 
     for i, pt in enumerate(points):
-        if pt[2] > 0.5:
+        if pt[2] > confidence_threshold:
             image = cv2.circle(image, (int(pt[1]), int(pt[0])), circle_size, tuple(colors[i % len(colors)]), -1)
 
     return image
 
 
-def draw_skeleton(image, points, skeleton, color_palette='Set2', palette_samples=8, person_index=0):
+def draw_skeleton(image, points, skeleton, color_palette='Set2', palette_samples=8, person_index=0,
+                  confidence_threshold=0.5):
     """
     Draws a `skeleton` on `image`.
 
@@ -113,7 +116,7 @@ def draw_skeleton(image, points, skeleton, color_palette='Set2', palette_samples
         image: image in opencv format
         points: list of points to be drawn.
             Shape: (nof_points, 3)
-            Format: each point should contain (x, y, confidence)
+            Format: each point should contain (y, x, confidence)
         skeleton: list of joints to be drawn
             Shape: (nof_joints, 2)
             Format: each joint should contain (point_a, point_b) where `point_a` and `point_b` are an index in `points`
@@ -123,6 +126,8 @@ def draw_skeleton(image, points, skeleton, color_palette='Set2', palette_samples
             Default: 8
         person_index: index of the person in `image`
             Default: 0
+        confidence_threshold: only points with a confidence higher than this threshold will be drawn. Range: [0, 1]
+            Default: 0.5
 
     Returns:
         A new image with overlaid joints
@@ -139,7 +144,7 @@ def draw_skeleton(image, points, skeleton, color_palette='Set2', palette_samples
 
     for i, joint in enumerate(skeleton):
         pt1, pt2 = points[joint]
-        if pt1[2] > 0.5 and pt2[2] > 0.5:
+        if pt1[2] > confidence_threshold and pt2[2] > confidence_threshold:
             image = cv2.line(
                 image, (int(pt1[1]), int(pt1[0])), (int(pt2[1]), int(pt2[0])),
                 tuple(colors[person_index % len(colors)]), 2
@@ -149,7 +154,8 @@ def draw_skeleton(image, points, skeleton, color_palette='Set2', palette_samples
 
 
 def draw_points_and_skeleton(image, points, skeleton, points_color_palette='tab20', points_palette_samples=16,
-                             skeleton_color_palette='Set2', skeleton_palette_samples=8, person_index=0):
+                             skeleton_color_palette='Set2', skeleton_palette_samples=8, person_index=0,
+                             confidence_threshold=0.5):
     """
     Draws `points` and `skeleton` on `image`.
 
@@ -157,7 +163,7 @@ def draw_points_and_skeleton(image, points, skeleton, points_color_palette='tab2
         image: image in opencv format
         points: list of points to be drawn.
             Shape: (nof_points, 3)
-            Format: each point should contain (x, y, confidence)
+            Format: each point should contain (y, x, confidence)
         skeleton: list of joints to be drawn
             Shape: (nof_joints, 2)
             Format: each joint should contain (point_a, point_b) where `point_a` and `point_b` are an index in `points`
@@ -171,14 +177,18 @@ def draw_points_and_skeleton(image, points, skeleton, points_color_palette='tab2
             Default: 8
         person_index: index of the person in `image`
             Default: 0
+        confidence_threshold: only points with a confidence higher than this threshold will be drawn. Range: [0, 1]
+            Default: 0.5
 
     Returns:
         A new image with overlaid joints
 
     """
     image = draw_skeleton(image, points, skeleton, color_palette=skeleton_color_palette,
-                          palette_samples=skeleton_palette_samples, person_index=person_index)
-    image = draw_points(image, points, color_palette=points_color_palette, palette_samples=points_palette_samples)
+                          palette_samples=skeleton_palette_samples, person_index=person_index,
+                          confidence_threshold=confidence_threshold)
+    image = draw_points(image, points, color_palette=points_color_palette, palette_samples=points_palette_samples,
+                        confidence_threshold=confidence_threshold)
     return image
 
 
