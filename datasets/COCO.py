@@ -25,7 +25,7 @@ class COCODataset(Dataset):
     """
 
     def __init__(self,
-                 root_path="./datasets/COCO", data_version="train2017", is_train=True, use_gt_bboxes=True, bbox_path="",
+                 root_path="/database/dataset/MS-COCO2017/", data_version="train2017", is_train=True, use_gt_bboxes=True, bbox_path="",
                  image_width=288, image_height=384, color_rgb=True,
                  scale=True, scale_factor=0.35, flip_prob=0.5, rotate_prob=0.5, rotation_factor=45., half_body_prob=0.3,
                  use_different_joints_weight=False, heatmap_sigma=3, soft_nms=False,
@@ -216,16 +216,18 @@ class COCODataset(Dataset):
                         joints_visibility[pt, 1] = t_vis
 
                 center, scale = self._box2cs(obj['clean_bbox'][:4])
+                
+                if  os.path.isfile(os.path.join(self.root_path, 'images', self.data_version, '%012d.jpg' % imgId)):
 
-                self.data.append({
-                    'imgId': imgId,
-                    'annId': obj['id'],
-                    'imgPath': os.path.join(self.root_path, self.data_version, '%012d.jpg' % imgId),
-                    'center': center,
-                    'scale': scale,
-                    'joints': joints,
-                    'joints_visibility': joints_visibility,
-                })
+                    self.data.append({
+                        'imgId': imgId,
+                        'annId': obj['id'],
+                        'imgPath': os.path.join(self.root_path, 'images', self.data_version, '%012d.jpg' % imgId),
+                        'center': center,
+                        'scale': scale,
+                        'joints': joints,
+                        'joints_visibility': joints_visibility,
+                    })
 
         # Done check if we need prepare_data -> We should not
         print('\nCOCO dataset loaded!')
@@ -244,6 +246,7 @@ class COCODataset(Dataset):
         joints_data = self.data[index].copy()
 
         # Read the image from disk
+        
         image = cv2.imread(joints_data['imgPath'], cv2.IMREAD_COLOR | cv2.IMREAD_IGNORE_ORIENTATION)
 
         if self.color_rgb:

@@ -3,6 +3,8 @@ import numpy as np
 import torch
 from torchvision.transforms import transforms
 
+import os, sys
+
 from models.hrnet import HRNet
 from models.poseresnet import PoseResNet
 from models.detectors.YOLOv3 import YOLOv3

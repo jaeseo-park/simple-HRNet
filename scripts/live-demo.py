@@ -12,8 +12,9 @@ sys.path.insert(1, os.getcwd())
 from SimpleHRNet import SimpleHRNet
 from misc.visualization import draw_points, draw_skeleton, draw_points_and_skeleton, joints_dict, check_video_rotation
 from misc.utils import find_person_id_associations
+from scripts.fall_down_detect import *
 
-def main(camera_id, filename, hrnet_m, hrnet_c, hrnet_j, hrnet_weights, hrnet_joints_set, image_resolution,
+def main(camera_id, filename, foldername,hrnet_m, hrnet_c, hrnet_j, hrnet_weights, hrnet_joints_set, image_resolution,
          single_person, disable_tracking, max_batch_size, disable_vidgear, save_video, video_format,
          video_framerate, device):
     if device is not None:
@@ -21,27 +22,33 @@ def main(camera_id, filename, hrnet_m, hrnet_c, hrnet_j, hrnet_weights, hrnet_jo
     else:
         if torch.cuda.is_available():
             torch.backends.cudnn.deterministic = True
-            device = torch.device('cuda')
+            device = torch.device('cuda:0')
         else:
             device = torch.device('cpu')
-
-    # print(device)
 
     image_resolution = ast.literal_eval(image_resolution)
     has_display = 'DISPLAY' in os.environ.keys() or sys.platform == 'win32'
     video_writer = None
+    falldown = FallDown()
+    
+    if foldername is not None:
+        images_path = foldername
+        images_name = os.listdir(images_path)
+        images_path = [os.path.join(images_path, name) for name in images_name]
+        images_path.sort()
 
-    if filename is not None:
-        rotation_code = check_video_rotation(filename)
-        video = cv2.VideoCapture(filename)
-        assert video.isOpened()
     else:
-        rotation_code = None
-        if disable_vidgear:
-            video = cv2.VideoCapture(camera_id)
+        if filename is not None:
+            rotation_code = check_video_rotation(filename)
+            video = cv2.VideoCapture(filename)
             assert video.isOpened()
         else:
-            video = CamGear(camera_id).start()
+            rotation_code = None
+            if disable_vidgear:
+                video = cv2.VideoCapture(camera_id)
+                assert video.isOpened()
+            else:
+                video = CamGear(camera_id).start()
 
     model = SimpleHRNet(
         hrnet_c,
@@ -61,19 +68,40 @@ def main(camera_id, filename, hrnet_m, hrnet_c, hrnet_j, hrnet_weights, hrnet_jo
         prev_person_ids = None
         next_person_id = 0
 
+
+    step =0
     while True:
         t = time.time()
 
-        if filename is not None or disable_vidgear:
-            ret, frame = video.read()
-            if not ret:
-                break
-            if rotation_code is not None:
-                frame = cv2.rotate(frame, rotation_code)
+        
+        if foldername is None:
+            if filename is not None or disable_vidgear:
+                ret, frame = video.read()
+                if not ret:
+                    break
+                if rotation_code is not None:
+                    frame = cv2.rotate(frame, rotation_code)
+            else:
+                frame = video.read()
+                if frame is None:
+                    break
+                
         else:
-            frame = video.read()
-            if frame is None:
+            if step >= len(images_path) :
                 break
+       
+            # Pre-process
+            images = []
+            images_origin = []
+            
+            path = images_path[step]
+            
+            frame = cv2.imread(path, cv2.IMREAD_COLOR)
+            if frame is None:
+                logging.error("read image error: {}. skip it.".format(path))
+                continue
+            
+                
 
         pts = model.predict(frame)
 
@@ -105,6 +133,8 @@ def main(camera_id, filename, hrnet_m, hrnet_c, hrnet_j, hrnet_weights, hrnet_jo
             frame = draw_points_and_skeleton(frame, pt, joints_dict()[hrnet_joints_set]['skeleton'], person_index=pid,
                                              points_color_palette='gist_rainbow', skeleton_color_palette='jet',
                                              points_palette_samples=10)
+                                             
+            frame = falldown.check_fall_down(frame, pt, joints_dict()[hrnet_joints_set]['skeleton'] , video_framerate)
 
         fps = 1. / (time.time() - t)
         print('\rframerate: %f fps' % fps, end='')
@@ -135,6 +165,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--camera_id", "-d", help="open the camera with the specified id", type=int, default=0)
     parser.add_argument("--filename", "-f", help="open the specified video (overrides the --camera_id option)",
+                        type=str, default=None)
+    parser.add_argument("--foldername", help="open the specified folder (overrides the --camera_id option)",
                         type=str, default=None)
     parser.add_argument("--hrnet_m", "-m", help="network model - 'HRNet' or 'PoseResNet'", type=str, default='HRNet')
     parser.add_argument("--hrnet_c", "-c", help="hrnet parameters - number of channels (if model is HRNet), "

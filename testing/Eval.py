@@ -64,6 +64,17 @@ class Test(object):
         """
         super(Test, self).__init__()
 
+        hrnet_m = 'HRNet'
+        hrnet_c = 48
+        hrnet_j = 17
+        hrnet_weights = "./weights/pose_hrnet_w48_384x288.pth"
+        hrnet_joints_set="coco"
+        image_resolution=(384, 288)
+        single_person = False
+        disable_tracking = False
+        max_batch_size = 16
+
+
         self.ds_test = ds_test
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -88,10 +99,24 @@ class Test(object):
 
         #
         # load model
-        self.model = HRNet(c=self.model_c, nof_joints=self.model_nof_joints,
-                           bn_momentum=self.model_bn_momentum).to(self.device)
+        #self.model = HRNet(c=self.model_c, nof_joints=self.model_nof_joints,
+        #                   bn_momentum=self.model_bn_momentum).to(self.device)
 
-                           
+
+        image_resolution = ast.literal_eval(image_resolution)
+        
+        
+        self.model = SimpleHRNet(
+            hrnet_c,
+            hrnet_j,
+            hrnet_weights,
+            model_name=hrnet_m,
+            resolution=image_resolution,
+            multiperson=not single_person,
+            return_bounding_boxes=not disable_tracking,
+            max_batch_size=max_batch_size,
+            device=device
+        )                   
 
         #
         # define loss
@@ -123,7 +148,7 @@ class Test(object):
         # load test dataset
         self.dl_test = DataLoader(self.ds_test, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers)
         self.len_dl_test = len(self.dl_test)
-        print("print len_dl_test: ", self.len_dl_test)
+        #print("print len_dl_test: ", self.len_dl_test)
 
         #
         # initialize variables
@@ -159,7 +184,9 @@ class Test(object):
                     
                 if avg_acc ==0 : continue
                 self.mean_loss_test += loss.item()
-                self.mean_acc_test += avg_acc.item()
+                avg_acc_now = avg_acc.item()
+                self.mean_acc_test += avg_acc_now
+                print("avg_acc_now : ", avg_acc_now)
                 
                 count_test += 1
                 if step == 0:
