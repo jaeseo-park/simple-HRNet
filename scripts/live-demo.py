@@ -14,13 +14,8 @@ from misc.visualization import draw_points, draw_skeleton, draw_points_and_skele
 from misc.utils import find_person_id_associations
 from scripts.fall_down_detect import *
 
-<<<<<<< HEAD
-def main(camera_id, filename, foldername,hrnet_m, hrnet_c, hrnet_j, hrnet_weights, hrnet_joints_set, image_resolution,
-         single_person, disable_tracking, max_batch_size, disable_vidgear, save_video, video_format,
-=======
 def main(camera_id, filename, hrnet_m, hrnet_c, hrnet_j, hrnet_weights, hrnet_joints_set, image_resolution,
          single_person, use_tiny_yolo, disable_tracking, max_batch_size, disable_vidgear, save_video, video_format,
->>>>>>> f4a81742975f7a3fb85493a4ed197e21e93f7222
          video_framerate, device):
     if device is not None:
         device = torch.device(device)
